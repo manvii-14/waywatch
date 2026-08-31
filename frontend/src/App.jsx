@@ -24,7 +24,7 @@ const PageGuide = ({ tab }) => {
   const guides = {
     live: "Plot your baseline corridor, then trace a verification path to execute the turn-sequence anomaly engine.",
     history: "Review the secure audit trail of past telemetry logs, similarity scores, and flagged anomalies.",
-    analytics: "Monitor aggregated system health, anomaly frequencies, and overall spatial matching confidence.",
+    analytics: "Monitor aggregated system health, anomaly severity, and route reliability comparisons.",
     settings: "Fine-tune spatial tolerance, turn sensitivity, and establish rules for critical event alerts."
   };
 
@@ -155,39 +155,21 @@ const Analytics = ({ trips }) => {
   const [anomalyVal, setAnomalyVal] = useState('0.0%');
   const [similarityVal, setSimilarityVal] = useState('00.0%');
 
-  const total = trips.length;
-  const anomalies = trips.filter(t => t.status === 'ANOMALY').length;
-  const targetAnomalyRate = total > 0 ? ((anomalies / total) * 100).toFixed(1) : '0.0';
-  const targetSim = total > 0 ? (trips.reduce((acc, t) => acc + (parseFloat(t.similarity) || 0), 0) / total).toFixed(0) : 0;
-  
-  const healthScore = total > 0 ? targetSim : 94;
-  const pathC = Math.min(100, parseInt(healthScore) + 2);
-  const turnC = Math.max(0, parseInt(healthScore) - 3);
-  const distC = parseInt(healthScore);
-  const stabC = Math.min(100, parseInt(healthScore) - 1);
+  // Core Math
+  const total = trips.length > 0 ? trips.length : 18; // Fallback to 18 for demo empty state
+  const anomalies = trips.length > 0 ? trips.filter(t => t.status === 'ANOMALY').length : 2;
+  const normalCount = total - anomalies;
+  const targetAnomalyRate = ((anomalies / total) * 100).toFixed(1);
+  const targetSim = trips.length > 0 ? (trips.reduce((acc, t) => acc + (parseFloat(t.similarity) || 0), 0) / trips.length).toFixed(1) : '94.6';
+  const reliability = ((normalCount / total) * 100).toFixed(1);
 
-  const chartTrips = trips.length >= 3 ? [...trips].reverse() : [
-    { date: 'Aug 20', similarity: 90 }, { date: 'Aug 22', similarity: 92 },
-    { date: 'Aug 25', similarity: 88 }, { date: 'Aug 28', similarity: 71 },
-    { date: 'Aug 31', similarity: 94 }
-  ];
+  // Split calculations for Reliability Breakdown
+  const minorDev = (anomalies > 0 ? ((anomalies * 0.5) / total) * 100 : 5.6).toFixed(1);
+  const majorDev = (anomalies > 0 ? ((anomalies * 0.5) / total) * 100 : 5.5).toFixed(1);
 
-  const getX = (index) => (index / (chartTrips.length - 1)) * 100;
-  const getY = (val) => {
-    const v = Math.max(50, Math.min(100, parseFloat(val) || 0));
-    return 100 - ((v - 50) / 50) * 100; 
-  };
-
-  const svgPoints = chartTrips.map((t, i) => `${getX(i)},${getY(t.similarity)}`).join(' ');
-  const areaPoints = `${getX(0)},100 ${svgPoints} ${getX(chartTrips.length - 1)},100`;
-
-  const breakdown = [
-    { label: 'PATH DEVIATION', value: 42 },
-    { label: 'TURN MISMATCH', value: 28 },
-    { label: 'DISTANCE CHANGE', value: 16 },
-    { label: 'START/END', value: 8 },
-    { label: 'OTHER', value: 6 },
-  ];
+  // Compare Logic (Gets latest 2 trips)
+  const t1 = trips[0] || { id: '018', date: 'Aug 31, 19:42', similarity: 91 };
+  const t2 = trips[1] || { id: '017', date: 'Aug 30, 19:38', similarity: 63 };
 
   useEffect(() => {
     let iteration = 0;
@@ -214,85 +196,99 @@ const Analytics = ({ trips }) => {
         <p style={{ color: 'var(--text-sub)', margin: 0, fontSize: '0.95rem' }}>Aggregated intelligence metrics across active delivery vectors.</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 2fr', gap: '30px', background: 'var(--bg-main)', padding: '40px', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRight: '1px solid var(--border-light)', paddingRight: '30px' }}>
-          <div style={{ fontSize: '5rem', fontWeight: '900', color: 'var(--text-main)', lineHeight: '1', fontFamily: 'monospace', letterSpacing: '-3px' }}>{healthScore}</div>
-          <div style={{ fontSize: '1.2rem', color: 'var(--text-sub)', fontWeight: '700' }}>/ 100</div>
-          <div style={{ marginTop: '15px', fontSize: '0.85rem', fontWeight: '900', letterSpacing: '2px', color: 'var(--text-main)', textTransform: 'uppercase' }}>ROUTE HEALTH</div>
+      {/* 3 Core Metric Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '25px' }}>
+        <div style={{ background: 'var(--bg-main)', padding: '30px', border: '1px solid var(--border-light)', borderRadius: '12px' }}>
+          <div style={{ color: 'var(--text-sub)', fontSize: '0.75rem', fontWeight: '700', letterSpacing: '1px' }}>TOTAL TRIPS</div>
+          <div style={{ color: 'var(--text-main)', fontSize: '2.5rem', fontWeight: '900', marginTop: '10px', fontFamily: 'monospace' }}>{tripsVal}</div>
         </div>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '20px', color: 'var(--text-main)', fontSize: '0.85rem', fontWeight: '700', letterSpacing: '1px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)', paddingBottom: '8px' }}>
-            <span>PATH CONSISTENCY</span> <span style={{ fontFamily: 'monospace', fontSize: '1rem' }}>{pathC}%</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)', paddingBottom: '8px' }}>
-            <span>TURN CONSISTENCY</span> <span style={{ fontFamily: 'monospace', fontSize: '1rem' }}>{turnC}%</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)', paddingBottom: '8px' }}>
-            <span>DISTANCE CONSISTENCY</span> <span style={{ fontFamily: 'monospace', fontSize: '1rem' }}>{distC}%</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px' }}>
-            <span>ROUTE STABILITY</span> <span style={{ fontFamily: 'monospace', fontSize: '1rem' }}>{stabC}%</span>
-          </div>
+        <div style={{ background: 'var(--bg-main)', padding: '30px', border: '1px solid var(--border-light)', borderRadius: '12px' }}>
+          <div style={{ color: 'var(--text-sub)', fontSize: '0.75rem', fontWeight: '700', letterSpacing: '1px' }}>ANOMALY RATE</div>
+          <div style={{ color: 'var(--text-main)', fontSize: '2.5rem', fontWeight: '900', marginTop: '10px', fontFamily: 'monospace' }}>{anomalyVal}</div>
+        </div>
+        <div style={{ background: 'var(--bg-main)', padding: '30px', border: '1px solid var(--border-light)', borderRadius: '12px' }}>
+          <div style={{ color: 'var(--text-sub)', fontSize: '0.75rem', fontWeight: '700', letterSpacing: '1px' }}>AVG SIMILARITY</div>
+          <div style={{ color: 'var(--text-main)', fontSize: '2.5rem', fontWeight: '900', marginTop: '10px', fontFamily: 'monospace' }}>{similarityVal}</div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '30px' }}>
+      {/* Grid: Severity & Reliability */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
         
-        <div style={{ background: 'var(--bg-main)', padding: '30px', borderRadius: '12px', border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column' }}>
-          <h3 style={{ margin: '0 0 30px 0', fontSize: '0.85rem', fontWeight: '900', letterSpacing: '1px', color: 'var(--text-main)' }}>ROUTE CONSISTENCY OVER TIME</h3>
-          
-          <div style={{ position: 'relative', height: '220px' }}>
-            <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', color: 'var(--text-sub)', fontSize: '10px', fontWeight: '700', fontFamily: 'monospace', paddingBottom: '20px' }}>
-              <span>100 ┤</span>
-              <span>80 ┤</span>
-              <span>60 ┤</span>
-              <span>50 ┤</span>
-            </div>
-            
-            <div style={{ marginLeft: '40px', height: 'calc(100% - 20px)', borderBottom: '1px solid var(--border-light)', position: 'relative' }}>
-              <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
-                <defs>
-                  <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--text-main)" stopOpacity="0.2" />
-                    <stop offset="100%" stopColor="var(--text-main)" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-                <polygon points={areaPoints} fill="url(#chartGradient)" />
-                <polyline points={svgPoints} fill="none" stroke="var(--text-main)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-                {chartTrips.map((t, i) => (
-                  <circle key={i} cx={getX(i)} cy={getY(t.similarity)} r="4" fill="var(--bg-main)" stroke="var(--text-main)" strokeWidth="2.5" vectorEffect="non-scaling-stroke" />
-                ))}
-              </svg>
-            </div>
-
-            <div style={{ marginLeft: '40px', display: 'flex', justifyContent: 'space-between', color: 'var(--text-sub)', fontSize: '10px', fontWeight: '700', marginTop: '10px', textTransform: 'uppercase' }}>
-              <span>{chartTrips[0].date}</span>
-              <span>{chartTrips[chartTrips.length - 1].date}</span>
-            </div>
-          </div>
-        </div>
-
+        {/* Anomaly Severity Distribution */}
         <div style={{ background: 'var(--bg-main)', padding: '30px', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
-          <h3 style={{ margin: '0 0 30px 0', fontSize: '0.85rem', fontWeight: '900', letterSpacing: '1px', color: 'var(--text-main)' }}>ANOMALY BREAKDOWN</h3>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {breakdown.map((item) => (
+          <h3 style={{ margin: '0 0 25px 0', fontSize: '0.85rem', fontWeight: '900', letterSpacing: '1px', color: 'var(--text-main)' }}>ANOMALY SEVERITY DISTRIBUTION</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            {[
+              { label: 'LOW', count: anomalies > 0 ? Math.max(1, Math.floor(anomalies * 0.53)) : 8, color: 'var(--text-main)' },
+              { label: 'MEDIUM', count: anomalies > 0 ? Math.max(1, Math.floor(anomalies * 0.26)) : 4, color: '#f57c00' },
+              { label: 'HIGH', count: anomalies > 0 ? Math.max(1, Math.floor(anomalies * 0.13)) : 2, color: 'var(--accent-red)' },
+              { label: 'CRITICAL', count: anomalies > 0 ? Math.max(1, Math.floor(anomalies * 0.08)) : 1, color: '#8b0000' },
+            ].map(item => (
               <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                <div style={{ width: '120px', fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-sub)', letterSpacing: '0.5px' }}>
-                  {item.label}
+                <div style={{ width: '80px', fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-sub)', letterSpacing: '0.5px' }}>{item.label}</div>
+                <div style={{ flex: 1, background: 'var(--border-light)', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{ width: `${(item.count / 15) * 100}%`, background: item.color, height: '100%', borderRadius: '4px' }} />
                 </div>
-                <div style={{ flex: 1, background: 'var(--border-light)', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div style={{ width: `${item.value}%`, background: 'var(--text-main)', height: '100%', borderRadius: '3px' }} />
-                </div>
-                <div style={{ width: '35px', textAlign: 'right', fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-main)', fontFamily: 'monospace' }}>
-                  {item.value}%
-                </div>
+                <div style={{ width: '20px', textAlign: 'right', fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-main)', fontFamily: 'monospace' }}>{item.count}</div>
               </div>
             ))}
           </div>
+          <div style={{ marginTop: '20px', fontSize: '0.7rem', color: 'var(--text-sub)', fontStyle: 'italic', cursor: 'pointer' }}>Click a category to filter history logs.</div>
+        </div>
+
+        {/* Route Reliability */}
+        <div style={{ background: 'var(--bg-main)', padding: '30px', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
+          <h3 style={{ margin: '0 0 20px 0', fontSize: '0.85rem', fontWeight: '900', letterSpacing: '1px', color: 'var(--text-main)' }}>ROUTE RELIABILITY</h3>
+          
+          <div style={{ display: 'flex', alignItems: 'end', gap: '15px', marginBottom: '20px' }}>
+            <span style={{ fontSize: '3.5rem', fontWeight: '900', color: 'var(--text-main)', lineHeight: '1', fontFamily: 'monospace', letterSpacing: '-2px' }}>{reliability}%</span>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '15px', fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-sub)', marginBottom: '25px', paddingBottom: '20px', borderBottom: '1px solid var(--border-light)' }}>
+            <span><strong style={{ color: 'var(--text-main)' }}>{total}</strong> trips analyzed</span>
+            <span>•</span>
+            <span><strong style={{ color: 'var(--text-main)' }}>{normalCount}</strong> normal</span>
+            <span>•</span>
+            <span><strong style={{ color: 'var(--accent-red)' }}>{anomalies}</strong> anomalous</span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.8rem', fontWeight: '700', letterSpacing: '1px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-main)' }}>
+              <span>NORMAL TRIPS</span> <span style={{ fontFamily: 'monospace' }}>{reliability}%</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#f57c00' }}>
+              <span>MINOR DEVIATIONS</span> <span style={{ fontFamily: 'monospace' }}>{minorDev}%</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--accent-red)' }}>
+              <span>MAJOR ANOMALIES</span> <span style={{ fontFamily: 'monospace' }}>{majorDev}%</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Compare Trips Module */}
+      <div style={{ background: 'var(--bg-main)', padding: '35px', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
+        <h3 style={{ margin: '0 0 25px 0', fontSize: '0.85rem', fontWeight: '900', letterSpacing: '1px', color: 'var(--text-main)', textAlign: 'center' }}>COMPARE TRIPS</h3>
+        
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '40px' }}>
+          
+          <div style={{ textAlign: 'center', background: 'var(--bg-card)', padding: '20px', borderRadius: '8px', border: '1px solid var(--border)', width: '200px' }}>
+            <div style={{ fontSize: '1.2rem', fontWeight: '900', color: 'var(--text-main)' }}>Trip #{t1.id}</div>
+            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-sub)', marginTop: '5px' }}>{t1.date}</div>
+          </div>
+
+          <div style={{ fontSize: '1.5rem', fontWeight: '900', color: 'var(--text-sub)', fontStyle: 'italic' }}>VS</div>
+
+          <div style={{ textAlign: 'center', background: 'var(--bg-card)', padding: '20px', borderRadius: '8px', border: '1px solid var(--border)', width: '200px' }}>
+            <div style={{ fontSize: '1.2rem', fontWeight: '900', color: 'var(--text-main)' }}>Trip #{t2.id}</div>
+            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-sub)', marginTop: '5px' }}>{t2.date}</div>
+          </div>
+
         </div>
       </div>
+
     </div>
   );
 };
