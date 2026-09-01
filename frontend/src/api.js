@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = "";
+const API_BASE_URL = "https://waywatch.vercel.app";
 
 const API = axios.create({
     baseURL: API_BASE_URL,
