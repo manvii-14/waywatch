@@ -438,7 +438,7 @@ export default function App() {
   const [trips, setTrips] = useState([]);
 
   useEffect(() => {
-    axios.get('http://127.0.0.1:8000/api/trips/')
+    axios.get('/trips/')
       .then(res => setTrips(res.data))
       .catch(err => {
         setTrips([
