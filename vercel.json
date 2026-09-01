@@ -1,13 +1,25 @@
 {
-  "services": {
-    "frontend": {
-      "root": "frontend",
-      "framework": "vite"
+  "builds": [
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
     },
-    "backend": {
-      "root": "backend",
-      "framework": "django",
-      "entrypoint": "backend/wsgi.py"
+    {
+      "src": "backend/backend/wsgi.py",
+      "use": "@vercel/python"
     }
-  }
+  ],
+  "routes": [
+    {
+      "source": "/api/(.*)",
+      "destination": "backend/backend/wsgi.py"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "frontend/dist/$1"
+    }
+  ]
 }
